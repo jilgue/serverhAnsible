@@ -3,8 +3,26 @@
   hosts: webservers
   sudo: True
   tasks:
-    - name: install nginx
-      apt: name=nginx update_cache=yes
+    - name: create user
+      user: name=deploy uid=1000 groups=www-data home=/deploy/ shell=/bin/bash
+    - name: create projects dir
+      file: path=/deploy/projects state=directory
+    - name: install packages
+      apt: pkg={{ item }} update_cache=yes cache_valid_time=3600
+      with_items:
+        - php5
+        - php5-fpm
+        - nginx
+        - vim
+        - nfs-common
+    - name: mount project
+      mount:
+        name: /deploy/projects/
+        src: 192.168.56.1:/srv/nfs/personal_projects/
+        fstype: nfs
+        opts: user,rw,proto=tcp,hard,intr,rsize=8192,wsize=8192,noatime
+        fstab: /etc/fstab
+        state: mounted
     - name: copy nginx config file
       copy: src=files/nginx.conf dest=/etc/nginx/sites-available/default
     - name: enable configuration
@@ -12,13 +30,8 @@
         dest=/etc/nginx/sites-enabled/default
         src=/etc/nginx/sites-available/default
         state=link
-    - name: copy index.html
-      template: src=templates/index.html.j2 dest=/usr/share/nginx/html/index.html mode=0644
-    - name: restart nginx
-      service: name=nginx state=restarted
-    - name: install php
-      apt: pkg={{ item }} update_cache=yes cache_valid_time=3600
+    - name: restart services
+      service: name={{ item }} state=restarted
       with_items:
+        - nginx
         - php5-fpm
-    - name: restart php-fpm
-      service: name=php5-fpm state=restarted
