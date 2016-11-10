@@ -16,3 +16,9 @@
       template: src=templates/index.html.j2 dest=/usr/share/nginx/html/index.html mode=0644
     - name: restart nginx
       service: name=nginx state=restarted
+    - name: install php
+      apt: pkg={{ item }} update_cache=yes cache_valid_time=3600
+      with_items:
+        - php5-fpm
+    - name: restart php-fpm
+      service: name=php5-fpm state=restarted
